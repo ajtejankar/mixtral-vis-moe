@@ -45,7 +45,11 @@ for i, (cat, subcats) in enumerate(categories.items()):
 subj_to_cat = {subjects[v]: k for k, vv in cat_to_subj.items() for v in vv}
 cat_list = sorted(cat_to_subj.keys())
 
-subj_to_frac_vecs = np.load('router_logit_frac_vecs.npy').item()
+subj_to_frac_vecs = {}
+for file_name in os.listdir('frac_vecs'):
+    arr = np.load(os.path.join('frac_vecs', file_name))
+    subj = file_name.split('.npy')[0]
+    subj_to_frac_vecs[subj] = arr
 
 def get_data(layer_id=31, label_type=0):
     X = []
