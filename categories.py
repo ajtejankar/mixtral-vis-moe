@@ -1,3 +1,7 @@
+from itertools import chain
+import os
+from collections import Counter, defaultdict
+
 subcategories = {
     "abstract_algebra": ["math"],
     "anatomy": ["health"],
@@ -59,8 +63,28 @@ subcategories = {
 }
 
 categories = {
-    "STEM": ["physics", "chemistry", "biology", "computer science", "math", "engineering"],
+    "stem": ["math", "engineering", "computer science", "physics", "chemistry", "biology"],
     "humanities": ["history", "philosophy", "law"],
-    "social sciences": ["politics", "culture", "economics", "geography", "psychology"],
-    "other (business, health, misc.)": ["other", "business", "health"],
+    "social sciences": ["geography", "politics", "culture", "economics", "psychology"],
+    "other": ["other", "business", "health"],
 }
+
+
+with open('subjects.txt', 'r') as f:
+    subjects = [line.strip() for line in f.readlines()]
+
+subcat_to_subj = defaultdict(list)
+for i, (subj, subcat) in enumerate(subcategories.items()):
+    subcat_to_subj[subcat[0]].append(i)
+subj_to_subcat = {subjects[v]: k for k, vv in subcat_to_subj.items() for v in vv}
+
+cat_to_subj = defaultdict(list)
+for i, (cat, subcats) in enumerate(categories.items()):
+    cat_name = cat.split()[0].lower().replace('social', 'social sciences')
+    for subcat in subcats:
+        cat_to_subj[cat_name].extend(subcat_to_subj[subcat])
+subj_to_cat = {subjects[v]: k for k, vv in cat_to_subj.items() for v in vv}
+
+cat_list = ['stem', 'humanities', 'social sciences', 'other']
+subcat_list = list(chain(*[categories[c] for c in cat_list]))
+

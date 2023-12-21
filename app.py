@@ -4,7 +4,6 @@
 import os
 import shlex
 import argparse
-from collections import Counter, defaultdict
 from functools import partial
 
 import numpy as np
@@ -21,29 +20,13 @@ from sklearn.tree import DecisionTreeClassifier, plot_tree, export_graphviz
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from dash import Dash, html, dcc, callback, Output, Input
+from layout import app_layout
+from dash import Dash, callback, Output, Input
+import dash_bootstrap_components as dbc
 
 from tqdm.auto import tqdm
-from categories import subcategories, categories
+from categories import *
 
-choices = ["A", "B", "C", "D"]
-
-with open('subjects.txt', 'r') as f:
-    subjects = [line.strip() for line in f.readlines()]
-
-subcat_to_subj = defaultdict(list)
-for i, (subj, subcat) in enumerate(subcategories.items()):
-    subcat_to_subj[subcat[0]].append(i)
-subj_to_subcat = {subjects[v]: k for k, vv in subcat_to_subj.items() for v in vv}
-subcat_list = sorted(subcat_to_subj.keys())
-
-cat_to_subj = defaultdict(list)
-for i, (cat, subcats) in enumerate(categories.items()):
-    cat_name = cat.split()[0].lower().replace('social', 'social sciences')
-    for subcat in subcats:
-        cat_to_subj[cat_name].extend(subcat_to_subj[subcat])
-subj_to_cat = {subjects[v]: k for k, vv in cat_to_subj.items() for v in vv}
-cat_list = sorted(cat_to_subj.keys())
 
 subj_to_frac_vecs = {}
 for file_name in os.listdir('frac_vecs'):
@@ -64,7 +47,6 @@ def get_data(layer_id=31, label_type=0):
     X = np.concatenate(X, axis=0)
     y = np.array(y)
     y_names = np.array(label_lists[label_type])
-    # X_reduced = PCA(n_components=2).fit_transform(X)
     return X, y, y_names
 
 
@@ -99,7 +81,8 @@ def update_clf(layer_id):
     clf, _ = run_classif(layer_id, label_type)
     clf.steps[1][1].coef_.shape
     clf_fig = px.imshow(clf.steps[1][1].coef_.T)
-
+    clf_fig.update_layout(coloraxis=dict(colorbar=dict(orientation='h', y=-0.01)))
+    
     return clf_fig
 
 # 3. Add figures to the page
@@ -116,23 +99,46 @@ def update_pca(layer_id):
     pca = PCA(n_components=2)
     X_reduced = pca.fit_transform(X)
 
+    df = pd.DataFrame({
+        'x': X_reduced[:, 0],
+        'y': X_reduced[:, 1],
+        'category': y2_names[y2],
+        'category_idx': y2,
+        'sub_category': y1_names[y1],
+        'sub_category_idx': y1,
+        'subject': y0_names[y0],
+        'subject_idx': y0,
+    }).sort_values(by=['category_idx', 'sub_category_idx', 'subject_idx'])
 
-    df = pd.DataFrame({'x': X_reduced[:, 0], 'y': X_reduced[:, 1], 'category': y2_names[y2], 'sub_category': y1_names[y1], 'subject': y0_names[y0]})
-    pca_fig = px.scatter(df, x='x', y='y', facet_col='category', color='sub_category', hover_data='subject')
-    pca_fig.update_layout(width=1200, height=400)
+    # df['show_subcat'] = df['category'] + ' - ' + df['sub_category']
+    df['show_subcat'] =  df['sub_category'] + ' (' + df['category'] + ')'
+
+
+    pca_fig = px.scatter(df,
+            x='x', y='y',
+            facet_col='category', color='show_subcat', hover_data='subject')
+            # color_discrete_sequence=px.colors.qualitative.G10)
+
+    pca_fig.update_layout(legend=dict(
+        title='Sub Categories',
+        entrywidth=200,
+        orientation="h",
+        yanchor="bottom",
+        y=1.10,
+        # xanchor="right",
+        # x=0.0
+    ))
 
     return pca_fig
 
-app = Dash(__name__)
+
+app = Dash(
+    'Visualize Mixtral MoE',
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+)
+
 server = app.server
-app.layout = html.Div([
-    dcc.Dropdown(list(str(x) for x in range(32)), str(layer_id), id='layer-id-dropdown'),
-    # dcc.Dropdown(list(str(x) for x in range(3)), str(label_type), id='label-type-dropdown')
-    html.Div(children=f'Visualization of Linear SVM Classifier Parameters: Layer {layer_id}'),
-    dcc.Graph(figure={}, id='clf-fig'),
-    html.Div(children=f'Visualization of PCA: Layer {layer_id}'),
-    dcc.Graph(figure={}, id='pca-fig'),
-])
+app.layout = app_layout
 
 
 if __name__ == '__main__':
