@@ -46,41 +46,49 @@ controls = dbc.Card([
 
 overview_text = dcc.Markdown('''
 Recently, Mistral AI's Mixture-of-Experts model
-([Mixtral MoE](https://mistral.ai/news/mixtral-of-experts/)) shows impressive performance
-despite only requiring forward capacity of a 13B model. The model dynamically decides which
-experts to use for each token, where an expert is the FFN or MLP layer in a traditional
-transformer model. Specifically, there are 8 different expert MLPs at each layer and 2 of them
-are picked by a module called router to be applied to the embedding of a given token. Given that
-the model can now choose which MLP layer to use for each token, unlike attention modules, it is
+([Mixtral MoE](https://mistral.ai/news/mixtral-of-experts/)) shows impressive performance,
+comparable to a 70B model, despite only requiring forward pass capacity of a 13B model.
+The model dynamically decides which
+expert to use for each token, where an expert is an FFN or an MLP layer in a traditional
+transformer model. Specifically, there are 8 different expert MLPs at each layer out of which 2
+are picked by a module called router for a given token.
+Given that the model can now choose which MLP layers to use for each token, unlike attention modules, it is
 reasonable to believe that the experts are, well, _experts_ on different topics. This project
 attempts to visualize whether this actually happens.
 
-The idea is to forward a sentences/paragraph/tokens from a variety of topics and calculate how many times
+The idea is to forward a sentences/paragraphs from different topics and calculate how many times
 each expert was picked during the forward pass. If the experts do specialize for certain topics,
 then this 8 dimensional feature vector of expert frequencies should contain all the information needed
 to correctly predict the topic of a given paragraph. Alternatively, paragraphs coming from different
-topics should be linearly separable in the space of expert picking frequencies. We use the popular
-MMLU dataset with 57 different topics/subjects here. The subjects are grouped in 17 different
-sub-categories and 4 different broad level categories. However, before we attempt to classify the
-paragraphs, let us try to visualize them.
+topics should reside far away from each other in the of expert frequencies. Doing this needs a dataset
+with topic-wise annotations. So, we use the popular MMLU dataset with 57 different topics/subjects.
+The subjects are grouped in 17 different sub-categories and 4 different broad level categories.
+However, before we attempt to classify the paragraphs, let us try to visualize them.
 ''')
 
 pca_text = dcc.Markdown('''
-While 8 dimensions is relatively small compared to the typical size of embeddings in Deep Learning,
-visualizing the data directly is still not possible in it. Hence, we reduce these 8 dimensions to 2
+While 8 dimensions is relatively small compared to the typical dimention size of embeddings in Deep Learning,
+visualizing the data in it is still not possible. Hence, we reduce these 8 dimensions to 2
 with PCA. Given that there is a lot of overlap, the plots are separated according to their broad
-categories. The plots are interactive and has following features. 1) Hovering on each point shows
+categories. The plots are interactive and have following features. 1) Hovering on each point shows
 information related to it. 2) You can click on legend entries to disable its points. 3) You can double
-click on legend entries to only keep the plot for that entry. We can see that in the stem category,
-math related topics are on the positive side of the y axis while biology is on the negative side.
+click on legend entries to only keep the plot for that entry. For the last layer and stem category,
+we can see that math related topics are on one side of the y axis while biology is on the other side.
+Changing the layer results in a different arrangement of topics which indicates how each layer is
+learning topic-wise information.
 ''')
 
 svm_text = dcc.Markdown('''
-Now that we have some intuition about how the expert frequencies encode information about its topic,
-let's explore how truly separated these topics are. To do so, we train an SVM which is linear classifier.
-If the accuracy of the SVM is high, then it means that paragraphs from each topic can be separated from
-others by a simple plane in 8 dimensions, and we see that the accuracy is indeed high. Further, we
-can explore if certain experts are important for certain subjects with the following heatmap.
+Now that we have some intuition about how the expert frequencies encode topic information,
+let's explore how truly separated these topics are. To do so, we train an SVM, a linear classifier, to separate
+input data by topics. If linear separation is possible, then the classifier should have a high accuracy, and we
+indeed see this happening. For instance, the SVM classifier gets about 95% accuracy at the last layer. What
+else can the SVM tell us? Well, we can look at the classifier weights for each subject and try to understand
+which experts are important/unimportant for it. Blue means the expert fires less frequently than average while
+yellow means the expert fires more. Another surprising finding, at least for me, is that the classifier accuracy
+stays high for almost all layers. I had expected the accuracy to be bad for initial layers but to progressively
+get better at later layers. Since this doesn't happen and the accuracy is always high, we can only conclude
+that the topic-wise segregation happens from the very first layer. Quite interesting if you ask me.
 ''')
 
 
@@ -109,12 +117,22 @@ app_layout = dbc.Container(
             html.H1('Visualizing Expert Firing Frequencies in Mixtral MoE'),
             html.Hr(),
         ]),
-        dbc.Row(
-            [
-                dbc.Col(controls, md=2),
-                dbc.Col(graphs, md=10),
-            ],
+        dbc.Row([
+            dbc.Col(controls, md=2),
+            dbc.Col(graphs, md=10),
+        ],
+        style={'margin-bottom': '50px !important'},
         ),
+        dbc.Row([
+            html.Footer([
+                'Made by ',
+                html.A('Ajinkya Tejankar', href='https://ajtejankar.github.io'),
+            ],
+            className='footer bg-light py-1 text-center small',
+            style={'position': 'fixed', 'bottom': '0'},
+            )
+        ],
+        className='mt-5'),
     ],
     fluid=True,
 )
