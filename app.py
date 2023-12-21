@@ -72,41 +72,6 @@ permute_inds = [
                 for subject_idx in sorted(subcat_to_subj[subcat])
     ]
 
-print('Generate CLF Info')
-clf_info = []
-for ll in tqdm(range(32)):
-    clf, accs = run_classif(ll)
-    weights = clf.steps[1][1].coef_
-    permuted_weights = weights[permute_inds]
-    clf_info.append((permuted_weights, accs.mean()))
-
-print('Generate PCA Info')
-pca_info = []
-for ll in tqdm(range(32)):
-    _, y0, y0_names = get_data(ll, 0)
-    _, y1, y1_names = get_data(ll, 1)
-    X, y2, y2_names = get_data(ll, 2)
-
-    pca = PCA(n_components=2)
-    X_reduced = pca.fit_transform(X)
-
-    df = pd.DataFrame({
-        'x': X_reduced[:, 0],
-        'y': X_reduced[:, 1],
-        'category': y2_names[y2],
-        'category_idx': y2,
-        'sub_category': y1_names[y1],
-        'sub_category_idx': y1,
-        'subject': y0_names[y0],
-        'subject_idx': y0,
-    }).sort_values(by=['category_idx', 'sub_category_idx', 'subject_idx'])
-
-    # df['show_subcat'] = df['category'] + ' - ' + df['sub_category']
-    df['show_subcat'] =  df['sub_category'] + ' (' + df['category'] + ')'
-
-    pca_info.append(df)
-
-
 # 1. Visualize Classifier Weights
 
 @callback(
@@ -116,7 +81,10 @@ for ll in tqdm(range(32)):
 def update_clf(layer_id):
     layer_id = int(layer_id)
 
-    weights, acc = clf_info[layer_id]
+    clf, accs = run_classif(layer_id)
+    weights = clf.steps[1][1].coef_[permute_inds]
+    acc = accs.mean()
+
     clf_fig = px.imshow(
             weights.T,
             labels=dict(x='Subject', y='Expert ID', color='Weight'),
@@ -142,7 +110,26 @@ def update_clf(layer_id):
 def update_pca(layer_id):
     layer_id = int(layer_id)
 
-    df = pca_info[layer_id]
+    _, y0, y0_names = get_data(layer_id, 0)
+    _, y1, y1_names = get_data(layer_id, 1)
+    X, y2, y2_names = get_data(layer_id, 2)
+
+    pca = PCA(n_components=2)
+    X_reduced = pca.fit_transform(X)
+
+    df = pd.DataFrame({
+        'x': X_reduced[:, 0],
+        'y': X_reduced[:, 1],
+        'category': y2_names[y2],
+        'category_idx': y2,
+        'sub_category': y1_names[y1],
+        'sub_category_idx': y1,
+        'subject': y0_names[y0],
+        'subject_idx': y0,
+    }).sort_values(by=['category_idx', 'sub_category_idx', 'subject_idx'])
+
+    # df['show_subcat'] = df['category'] + ' - ' + df['sub_category']
+    df['show_subcat'] =  df['sub_category'] + ' (' + df['category'] + ')'
 
     pca_fig = px.scatter(df,
             x='x', y='y',
