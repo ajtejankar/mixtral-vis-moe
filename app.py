@@ -52,7 +52,7 @@ def get_data(layer_id=31, label_type=0):
 
 def run_classif(layer_id=31, label_type=0):
     accs = []
-    for fold in range(10):
+    for fold in range(1):
         X, y, y_names = get_data(layer_id, label_type)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30)
         clf = make_pipeline(StandardScaler(), LinearSVC(dual="auto", tol=1e-5))
@@ -65,36 +65,27 @@ def run_classif(layer_id=31, label_type=0):
     return clf, accs
 
 
-# 1. Visualize Classifier Weights
+permute_inds = [
+        subject_idx
+        for cat in cat_list
+            for subcat in categories[cat]
+                for subject_idx in sorted(subcat_to_subj[subcat])
+    ]
 
-layer_id = 31
-label_type = 0
+print('Generate CLF Info')
+clf_info = []
+for ll in tqdm(range(32)):
+    clf, accs = run_classif(ll)
+    weights = clf.steps[1][1].coef_
+    permuted_weights = weights[permute_inds]
+    clf_info.append((permuted_weights, accs.mean()))
 
-# 3. Add figures to the page
-@callback(
-    Output(component_id='clf-fig', component_property='figure'),
-    Input(component_id='layer-id-dropdown', component_property='value')
-)
-def update_clf(layer_id):
-    layer_id = int(layer_id)
-
-    clf, _ = run_classif(layer_id, label_type)
-    clf.steps[1][1].coef_.shape
-    clf_fig = px.imshow(clf.steps[1][1].coef_.T)
-    clf_fig.update_layout(coloraxis=dict(colorbar=dict(orientation='h', y=-0.01)))
-    
-    return clf_fig
-
-# 3. Add figures to the page
-@callback(
-    Output(component_id='pca-fig', component_property='figure'),
-    Input(component_id='layer-id-dropdown', component_property='value')
-)
-def update_pca(layer_id):
-    layer_id = int(layer_id)
-    _, y1, y1_names = get_data(layer_id, 1)
-    _, y0, y0_names = get_data(layer_id, 0)
-    X, y2, y2_names = get_data(layer_id, 2)
+print('Generate PCA Info')
+pca_info = []
+for ll in tqdm(range(32)):
+    _, y0, y0_names = get_data(ll, 0)
+    _, y1, y1_names = get_data(ll, 1)
+    X, y2, y2_names = get_data(ll, 2)
 
     pca = PCA(n_components=2)
     X_reduced = pca.fit_transform(X)
@@ -113,12 +104,52 @@ def update_pca(layer_id):
     # df['show_subcat'] = df['category'] + ' - ' + df['sub_category']
     df['show_subcat'] =  df['sub_category'] + ' (' + df['category'] + ')'
 
+    pca_info.append(df)
+
+
+# 1. Visualize Classifier Weights
+
+@callback(
+    Output(component_id='clf-fig', component_property='figure'),
+    Input(component_id='layer-id-dropdown', component_property='value')
+)
+def update_clf(layer_id):
+    layer_id = int(layer_id)
+
+    weights, acc = clf_info[layer_id]
+    clf_fig = px.imshow(
+            weights.T,
+            labels=dict(x='Subject', y='Expert ID', color='Weight'),
+            x = [subjects[i] for i in permute_inds])
+    # clf_fig.update_layout(coloraxis=dict(colorbar=dict(orientation='h', y=-0.01)))
+    clf_fig.update_layout(height=450)
+    clf_fig.update_xaxes(tickangle=45)
+    clf_fig.update_layout(title={
+        'text': f'Weight of an SVM Classifier with Accuracy {acc*100:.0f}%',
+        'y':0.93,
+        'x':0.5,
+        'xanchor': 'center',
+        'yanchor': 'top'
+    })
+    
+    return clf_fig
+
+# 3. Add figures to the page
+@callback(
+    Output(component_id='pca-fig', component_property='figure'),
+    Input(component_id='layer-id-dropdown', component_property='value')
+)
+def update_pca(layer_id):
+    layer_id = int(layer_id)
+
+    df = pca_info[layer_id]
 
     pca_fig = px.scatter(df,
             x='x', y='y',
             facet_col='category', color='show_subcat', hover_data='subject')
             # color_discrete_sequence=px.colors.qualitative.G10)
 
+    pca_fig.update_layout(height=450)
     pca_fig.update_layout(legend=dict(
         title='Sub Categories',
         entrywidth=200,
@@ -133,7 +164,8 @@ def update_pca(layer_id):
 
 
 app = Dash(
-    'Visualize Mixtral MoE',
+    __name__,
+    title='Visualize Mixtral MoE',
     external_stylesheets=[dbc.themes.BOOTSTRAP],
 )
 
