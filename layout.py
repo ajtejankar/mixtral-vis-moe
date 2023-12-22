@@ -135,7 +135,7 @@ app_layout = dbc.Container(
         ),
         dbc.Row([
             html.Footer([
-                'Made by ',
+                '© Copyright 2023 ',
                 html.A('Ajinkya Tejankar', href='https://ajtejankar.github.io'),
             ],
             className='footer bg-light py-1 text-center small',
