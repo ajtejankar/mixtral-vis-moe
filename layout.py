@@ -56,19 +56,19 @@ Given that the model can now choose which MLP layers to use for each token, unli
 reasonable to believe that the experts are, well, _experts_ on different topics. This project
 attempts to visualize whether this actually happens.
 
-The idea is to forward a sentences/paragraphs from different topics and calculate how many times
+The idea is to forward a few sentences/paragraphs from different topics and calculate how many times
 each expert was picked during the forward pass. If the experts do specialize for certain topics,
 then this 8 dimensional feature vector of expert frequencies should contain all the information needed
 to correctly predict the topic of a given paragraph. Alternatively, paragraphs coming from different
-topics should reside far away from each other in the of expert frequencies. Doing this needs a dataset
+topics should reside far away from each other in the space of expert frequencies. Doing this needs a dataset
 with topic-wise annotations. So, we use the popular MMLU dataset with 57 different topics/subjects.
 The subjects are grouped in 17 different sub-categories and 4 different broad level categories.
 However, before we attempt to classify the paragraphs, let us try to visualize them.
 ''')
 
 pca_text = dcc.Markdown('''
-While 8 dimensions is relatively small compared to the typical dimention size of embeddings in Deep Learning,
-visualizing the data in it is still not possible. Hence, we reduce these 8 dimensions to 2
+While 8 dimensions is relatively small compared to the typical dimension size of embeddings in Deep Learning,
+visualizing the data in it is still difficult. Hence, we reduce these 8 dimensions to 2
 with PCA. Given that there is a lot of overlap, the plots are separated according to their broad
 categories. The plots are interactive and have following features. 1) Hovering on each point shows
 information related to it. 2) You can click on legend entries to disable its points. 3) You can double
