@@ -114,9 +114,19 @@ graphs = html.Div(
 app_layout = dbc.Container(
     [
         dbc.Row([
-            html.H1('Visualizing Expert Firing Frequencies in Mixtral MoE'),
+            dbc.Col(html.H1('Visualizing Expert Firing Frequencies in Mixtral MoE'), md=10),
+            dbc.Col(
+                html.A('GitHub',
+                    href='https://github.com/ajtejankar/mixtral-vis-moe',
+                    target='_blank',
+                ),
+                className='text-center',
+                md=2
+            ),
             html.Hr(),
-        ]),
+        ],
+        className='align-items-center',
+        ),
         dbc.Row([
             dbc.Col(controls, md=2),
             dbc.Col(graphs, md=10),
